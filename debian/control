@@ -1,0 +1,13 @@
+Source: munin-plugins-fnx
+Section: fnx/plugins
+Priority: optional
+Maintainer: Christian Schrötter <cs@fnx.li>
+Build-Depends-Indep: debhelper (>= 9)
+Standards-Version: 3.9.5
+Homepage: https://github.com/froonix/munin-plugins-fnx
+
+Package: munin-plugins-fnx
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}, munin-node
+Description: Froonix Munin Plugins
