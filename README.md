@@ -8,6 +8,7 @@ Some plugins are available via their own repositories…
 
 | Plugin Name               | GitHub Repository         | [Debian Package][100]     |
 |:------------------------- |:-------------------------:|:-------------------------:|
+| `ism`                     | [ism-catcher][102]        | -                         |
 | `temper_`                 | [pcsensor-temper][101]    | `pcsensor-temper`         |
 
 
@@ -22,3 +23,4 @@ Some plugins are available via their own repositories…
 
 [100]: https://debrep.froonix.org/froonix/
 [101]: https://github.com/froonix/pcsensor-temper
+[101]: https://github.com/froonix/ism-catcher
