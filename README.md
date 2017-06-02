@@ -23,4 +23,4 @@ Some plugins are available via their own repositories…
 
 [100]: https://debrep.froonix.org/froonix/
 [101]: https://github.com/froonix/pcsensor-temper
-[101]: https://github.com/froonix/ism-catcher
+[102]: https://github.com/froonix/ism-catcher
