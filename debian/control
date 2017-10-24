@@ -10,4 +10,5 @@ Package: munin-plugins-fnx
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}, ${shlibs:Depends}, munin-node
+Recommends: php-cli
 Description: Froonix Munin Plugins
