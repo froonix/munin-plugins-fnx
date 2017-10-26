@@ -1,0 +1,257 @@
+#!/bin/bash
+########################################################################
+#                                                                      #
+# Munin plugin for DrayTek Vigor 120 ADSL/ADSL2+ modem.                #
+# 100% compatible data structure, see xdsl_* plugin(s).                #
+#                                                                      #
+# Author:  Christian Schrötter <cs@fnx.li>                             #
+# License: GNU General Public License, version 3                       #
+#                                                                      #
+########################################################################
+#                                                                      #
+# 1) Enable plugin: ln -s /usr/share/munin/plugins/fnx/adsl_vigor120 \ #
+#                         /etc/munin/plugins/adsl                      #
+#                                                                      #
+# 2) Create config:    touch      /etc/munin/plugin-conf.d/adsl \      #
+#                   && chmod 0600 /etc/munin/plugin-conf.d/adsl \      #
+#                   && editor     /etc/munin/plugin-conf.d/adsl        #
+#                                                                      #
+#    > [adsl]                                                          #
+#    > env.hostname  <VHOST>      (optional; virtual hostname)         #
+#    > env.address   192.168.1.1  (optional; FQDN or IP address)       #
+#    > env.password  <PASSWORD>   (default: empty; see note below)     #
+#                                                                      #
+# 3) Test it: munin-run adsl                                           #
+#                                                                      #
+# 4) Reload daemon: service munin-node restart                         #
+#                                                                      #
+# 5) Enjoy! :-)                                                        #
+#                                                                      #
+########################################################################
+#                                                                      #
+# Note: Empty passwords for "admin" account are possible, but          #
+# telnet login will only be active after first password change         #
+# via web interface! You can then switch back to an empty password.    #
+#                                                                      #
+# Important: Simultan telnet sessions are not allowed by DrayTek!      #
+#                                                                      #
+#   > System administrator is connecting from 192.168.1.2              #
+#   > Reject the connection request !!!                                #
+#                                                                      #
+# Data gathering will stop when you're logged in via telnet too...     #
+#                                                                      #
+########################################################################
+
+set -euf -o pipefail
+LANG=C # <- printf %f
+
+trim()
+{
+	local var="$*"
+	var="${var#"${var%%[![:space:]]*}"}"
+	var="${var%"${var##*[![:space:]]}"}"
+	echo -n "$var"
+}
+
+get_field()
+{
+	trim "$(grep "$1" <<< "$result" | tr -s ' ' | cut -d ':' -f "$2")"
+}
+
+floatval()
+{
+	printf "%.1f" "$(tr -d ' ' <<< "$1" | sed -r 's/^([0-9]+)\.([0-9]+).+$/\1.\2/')"
+}
+
+intval()
+{
+	printf "%d" "$(tr -d ' ' <<< "$1" | sed -r 's/^([0-9]+).+$/\1/')"
+}
+
+mode="${1:-}"
+basename=`basename "$0"`
+
+if [[ ! "$basename" =~ _$ ]]
+then basename="${basename}_"
+fi
+
+hostname="${hostname:-}"
+password="${password:-}"
+address="${address:-192.168.1.1}"
+stdin="$address"$'\n'"$password"
+
+if [[ "$mode" == "autoconf" ]]
+then
+	echo "no"
+	exit
+elif [[ "$mode" == "config" ]]
+then
+	if [[ ! -z "$hostname" ]]
+	then
+		echo "host_name $hostname"
+	fi
+
+	echo "multigraph ${basename}stats"
+
+	echo "graph_title ADSL line stats"
+	echo "graph_vlabel down (-) / up (+)"
+	echo "graph_category network"
+	echo "graph_scale no"
+
+	echo "status.label Status"
+	echo "status.info only zero = OK"
+	echo "status.colour COLOUR16"
+	echo "status.draw LINE0"
+
+	echo "max_down.graph no"
+	echo "max_down.label ..."
+	echo "max_down.cdef max_down,131072,/"
+	echo "max_down.min 0"
+
+	echo "max_up.label Max. (Mbit)"
+	echo "max_up.info maximum line rate"
+	echo "max_up.colour COLOUR20"
+	echo "max_up.draw AREA"
+	echo "max_up.cdef max_up,131072,/"
+	echo "max_up.negative max_down"
+	echo "max_up.min 0"
+
+	echo "bw_down.graph no"
+	echo "bw_down.label ..."
+	echo "bw_down.cdef bw_down,131072,/"
+	echo "bw_down.min 0"
+
+	echo "bw_up.label Rate (Mbit)"
+	echo "bw_up.info current line rate"
+	echo "bw_up.colour COLOUR19"
+	echo "bw_up.draw AREA"
+	echo "bw_up.cdef bw_up,131072,/"
+	echo "bw_up.negative bw_down"
+	echo "bw_up.min 0"
+
+	echo "pwr_down.graph no"
+	echo "pwr_down.label ..."
+	echo "pwr_down.min 0"
+
+	echo "pwr_up.label PWR  (dBm)"
+	echo "pwr_up.info output power"
+	echo "pwr_up.colour COLOUR15"
+	echo "pwr_up.draw LINE2"
+	echo "pwr_up.negative pwr_down"
+	echo "pwr_up.min 0"
+
+	echo "attn_down.graph no"
+	echo "attn_down.label ..."
+	echo "attn_down.min 0"
+
+	echo "attn_up.label ATTN (dB)"
+	echo "attn_up.info line attenuation"
+	echo "attn_up.colour COLOUR0"
+	echo "attn_up.draw LINE2"
+	echo "attn_up.negative attn_down"
+	echo "attn_up.min 0"
+
+	echo "snr_down.graph no"
+	echo "snr_down.label ..."
+	echo "snr_down.min 0"
+
+	echo "snr_up.label SNR  (dB)"
+	echo "snr_up.info signal-to-noise ratio"
+	echo "snr_up.colour COLOUR1"
+	echo "snr_up.draw LINE2"
+	echo "snr_up.negative snr_down"
+	echo "snr_up.min 0"
+
+	exit
+fi
+
+result=`expect -c '
+set timeout 10
+gets stdin address
+gets stdin password
+
+spawn telnet "$address"
+
+expect "Password:"
+send "$password\n"
+
+expect {
+	"Password:" { puts stderr "Error: Wrong password!"; close; exit }
+	">" { send "adsl status\n" }
+}
+
+expect ">"
+send "quit\n"
+
+close
+exit
+' <<< "$stdin"`
+
+if [[ "$result" =~ 'ADSL Firmware Version' ]]
+then
+	state=`get_field "State" 2`
+	mode=`get_field "DSL Modulation" 2`
+
+	max_down=`intval "$(get_field "DS Attainable Rate" 2)"`
+	max_up=`intval "$(get_field "US Attainable Rate" 3)"`
+
+	bw_down=`intval "$(get_field "DS Actual Rate" 2)"`
+	bw_up=`intval "$(get_field "US Actual Rate" 3)"`
+
+	snr_down=`intval "$(get_field "Cur SNR Margin" 3)"`
+	snr_up=`intval "$(get_field "Far SNR Margin" 3)"`
+
+	attn_down=`intval "$(get_field "NE Current Attenuation" 2)"`
+	attn_up=`intval "$(get_field "Far Current Attenuation" 2)"`
+
+	pwr_down=`floatval "$(get_field "DS actual PSD" 2)"`
+	pwr_up=`floatval "$(get_field "US actual PSD" 3)"`
+
+	if [[ "$state" == "SHOWTIME" ]]
+	then _state=0; else _state=1
+	fi
+
+	echo "multigraph ${basename}stats"
+	echo "status.extinfo $state - $mode"
+	echo "status.value $_state"
+
+	if [[ "$max_down" != "0" ]]
+	then echo "max_down.value $((max_down / 8))"
+	fi
+
+	if [[ "$max_up" != "0" ]]
+	then echo "max_up.value $((max_up / 8))"
+	fi
+
+	if [[ "$bw_down" != "0" ]]
+	then echo "bw_down.value $((bw_down / 8))"
+	fi
+
+	if [[ "$bw_up" != "0" ]]; then
+	echo "bw_up.value $((bw_up / 8))"
+	fi
+
+	if [[ "$pwr_down" != "0.0" ]]
+	then echo "pwr_down.value $pwr_down"
+	fi
+
+	if [[ "$pwr_up" != "0.0" ]]
+	then echo "pwr_up.value $pwr_up"
+	fi
+
+	if [[ "$attn_down" != "0" ]]
+	then echo "attn_down.value $attn_down"
+	fi
+
+	if [[ "$attn_up" != "0" ]]
+	then echo "attn_up.value $attn_up"
+	fi
+
+	if [[ "$snr_down" != "0" ]]
+	then echo "snr_down.value $snr_down"
+	fi
+
+	if [[ "$snr_up" != "0" ]]
+	then echo "snr_up.value $snr_up"
+	fi
+fi

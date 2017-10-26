@@ -1,8 +1,15 @@
+munin-plugins-fnx (0.0.2-1) experimental; urgency=medium
+
+  * New plugin: adsl_vigor120
+  * Minor fix: xdsl_vv2220
+
+ -- Christian Schrötter <cs@fnx.li>  Thu, 26 Oct 2017 04:03:00 +0200
+
 munin-plugins-fnx (0.0.1-1) experimental; urgency=medium
 
   * New plugin: xdsl_vv2220
 
- -- Christian Schrötter <cs@fnx.li>  Tue, 25 Oct 2017 19:36:00 +0200
+ -- Christian Schrötter <cs@fnx.li>  Tue, 24 Oct 2017 19:36:00 +0200
 
 munin-plugins-fnx (0.0.0-2) experimental; urgency=medium
 
