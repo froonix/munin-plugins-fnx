@@ -1,3 +1,9 @@
+munin-plugins-fnx (0.0.2-2) experimental; urgency=medium
+
+  * Fix package build error.
+
+ -- Christian Schrötter <cs@fnx.li>  Thu, 26 Oct 2017 04:09:40 +0200
+
 munin-plugins-fnx (0.0.2-1) experimental; urgency=medium
 
   * New plugin: adsl_vigor120

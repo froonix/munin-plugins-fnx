@@ -10,5 +10,5 @@ Package: munin-plugins-fnx
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}, ${shlibs:Depends}, munin-node
-Recommends: php-cli expect telnet
+Recommends: php-cli, expect, telnet
 Description: Froonix Munin Plugins
