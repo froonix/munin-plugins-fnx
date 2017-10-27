@@ -1,3 +1,9 @@
+munin-plugins-fnx (0.0.2-3) experimental; urgency=medium
+
+  * Removed redundant copyright statement.
+
+ -- Christian Schrötter <cs@fnx.li>  Fri, 27 Oct 2017 17:00:00 +0200
+
 munin-plugins-fnx (0.0.2-2) experimental; urgency=medium
 
   * Fix package build error.
