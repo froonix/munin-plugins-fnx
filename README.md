@@ -17,9 +17,14 @@ Some plugins are available via their own repositories…
 * Default license: `GPL-3.0+` (GNU General Public License, Version 3)
 
 
+## Examples
+Take a look at the wiki: [Example graphs][4]
+
+
 [1]: http://munin-monitoring.org/
 [2]: https://github.com/munin-monitoring/contrib
 [3]: ../master/debian/copyright
+[4]: https://github.com/froonix/munin-plugins-fnx/wiki/Example-graphs
 
 [100]: https://debrep.froonix.org/froonix/
 [101]: https://github.com/froonix/pcsensor-temper
