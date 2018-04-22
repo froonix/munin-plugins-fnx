@@ -1,0 +1,445 @@
+#!/usr/bin/env php
+<?php
+########################################################################
+#                                                                      #
+# Munin plugin for Dovado Tiny -- a small router for 2G/3G/4G sticks.  #
+# Tested with firmware v7.3.20 and K5005/E398 modem in bridge mode.    #
+#                                                                      #
+# This plugin is able to forward unread SMS messages via mail!         #
+# See "env.smsforward" config variable to enable this feature.         #
+# Alternatively there is an API too, but that is out of scope.         #
+#                                                                      #
+# Author:  Christian Schrötter <cs@fnx.li>                             #
+# License: GNU General Public License, version 3                       #
+#                                                                      #
+########################################################################
+#                                                                      #
+# 1) Enable plugin: ln -s /usr/share/munin/plugins/fnx/dovado_tiny \   #
+#                         /etc/munin/plugins/dovado                    #
+#                                                                      #
+# 2) Create config:    touch      /etc/munin/plugin-conf.d/dovado \    #
+#                   && chmod 0600 /etc/munin/plugin-conf.d/dovado \    #
+#                   && editor     /etc/munin/plugin-conf.d/dovado      #
+#                                                                      #
+#    > [dovado]                                                        #
+#    > env.hostname      <VHOST>       (optional; virtual hostname)    #
+#    > env.www_address   192.168.0.1   (optional; FQDN or IP address)  #
+#    > env.www_username  <USERNAME>    (optional; default: admin)      #
+#    > env.www_password  <PASSWORD>    (optional; default: password)   #
+#    > env.smsforward    <EMAIL>       (optional; forward SMS to mail) #
+#                                                                      #
+# 3) Test it: munin-run dovado                                         #
+#                                                                      #
+# 4) Reload daemon: service munin-node restart                         #
+#                                                                      #
+# 5) Enjoy! :-)                                                        #
+#                                                                      #
+########################################################################
+
+if(version_compare(PHP_VERSION, '5.5.0', '<'))
+{
+	print("PHP 5.5.0 or newer is required!\n");
+	exit(1);
+}
+else if(php_sapi_name() != 'cli')
+{
+	print("Please execute this script via CLI!\n");
+	exit(1);
+}
+
+set_error_handler('dovado_error');
+error_reporting(-1);
+
+if(!($basename = basename($_SERVER['argv'][0])))
+{
+	throw new Exception('Could not extract basename');
+}
+else if(substr($basename, -1) !== '_')
+{
+	$basename .= '_';
+}
+
+if(!empty($_SERVER['smsforward']))
+{
+	$smsforward = $_SERVER['smsforward'];
+}
+else
+{
+	$smsforward = false;
+}
+
+if($_SERVER['argc'] > 1)
+{
+	if($_SERVER['argv'][1] === 'autoconf')
+	{
+		print("no\n");
+		exit(0);
+	}
+	else if($_SERVER['argv'][1] === 'config')
+	{
+		if(isset($_SERVER['hostname']))
+		{
+			printf("host_name %s\n", str_replace(["\r", "\n"], '', $_SERVER['hostname']));
+		}
+
+		print("multigraph ${basename}connection\n");
+		{
+			print("graph_title Dovado Tiny (Connection)\n");
+			print("graph_info USB modem statistics\n");
+			print("graph_vlabel RSSI (-) / Misc (+)\n");
+			print("graph_category network\n");
+			print("graph_scale no\n");
+
+			print("status.label Status\n");
+			print("status.info only zero = OK\n");
+			print("status.colour COLOUR16\n");
+
+			print("signal.label Signal (%)\n");
+			print("signal.colour COLOUR20\n");
+			print("signal.draw AREA\n");
+			print("signal.min 0\n");
+			print("signal.max 100\n");
+
+			print("rssi.label RSSI (dBm)\n");
+			print("rssi.colour COLOUR3\n");
+			print("rssi.draw AREA\n");
+			print("rssi.max 0\n");
+
+			print("band.label Band\n");
+			print("band.colour COLOUR2\n");
+			print("band.draw LINE3\n");
+			print("band.min 2\n");
+		}
+
+		print("multigraph ${basename}sms\n");
+		{
+			print("graph_title Dovado Tiny (SMS)\n");
+			printf("graph_info SMS message counters%s\n", $smsforward ? ' (SMS will be forwarded via mail)' : '');
+			print("graph_vlabel Messages\n");
+			print("graph_category mail\n");
+			print("graph_scale no\n");
+
+			print("total.label Total\n");
+			print("total.colour COLOUR17\n");
+			print("total.draw AREA\n");
+
+			print("unread.label Unread\n");
+			print("unread.colour COLOUR9\n");
+			print("unread.draw LINE3\n");
+
+			if(!$smsforward)
+			{
+				print("unread.warning 0\n");
+			}
+		}
+
+		exit(0);
+	}
+}
+
+define('DOVADO_HOST', (isset($_SERVER['www_address'])  ? $_SERVER['www_address']  : '192.168.0.1'));
+define('DOVADO_USER', (isset($_SERVER['www_username']) ? $_SERVER['www_username'] : 'admin'      ));
+define('DOVADO_PASS', (isset($_SERVER['www_password']) ? $_SERVER['www_password'] : 'password'   ));
+
+if(!DOVADO_HOST || !DOVADO_USER || !DOVADO_PASS)
+{
+	throw new Exception('Missing ENV variables');
+}
+
+$result = dovado_stats();
+$output = ['connection' => []];
+
+if($result['modem'] && $result['firmware'])
+{
+	$_ = ''; // ($result['imei'] && $result['imsi']) ? sprintf(' -- IMEI %s -- IMSI %s', $result['imei'], $result['imsi']) : '';
+	$output['connection']['status'] = [(int) $result['status'], sprintf('%s (V%s)%s', $result['modem'], $result['firmware'], $_)];
+}
+else
+{
+	$output['connection']['status'] = (int) $result['status'];
+}
+unset($_);
+
+if($result['signal'] !== null)
+{
+	$output['connection']['signal'] = (int) $result['signal'];
+}
+
+if($result['rssi'] !== null)
+{
+	$output['connection']['rssi'] = (int) $result['rssi'];
+}
+
+if($result['band'] !== null)
+{
+	switch($result['band'])
+	{
+		case 4: $_ = 'LTE';       break;
+		case 3: $_ = 'UMTS/HSPA'; break;
+		case 2: $_ = 'GPRS/EDGE'; break;
+		default: throw new Exception();
+	}
+
+	$output['connection']['band'] = [(int) $result['band'], sprintf('%uG (%s)', $result['band'], $_)];
+}
+unset($_);
+
+if($result['newsms'] !== null || $result['totsms'] !== null)
+{
+	$output['sms'] = ['total' => $result['totsms']];
+
+	if(!$smsforward && $result['newsms'])
+	{
+		$output['sms']['unread'] = [$result['newsms'], 'NEW UNREAD MESSAGES IN YOUR INBOX'];
+	}
+	else
+	{
+		$output['sms']['unread'] = $result['newsms'];
+	}
+}
+
+foreach($output as $graph => $_)
+{
+	printf("multigraph %s%s\n", $basename, $graph);
+
+	foreach($_ as $key => $value)
+	{
+		if(is_array($value))
+		{
+			$info = $value[1];
+			$value = $value[0];
+
+			printf("%s.extinfo %s\n", $key, str_replace(["\r", "\n"], '', $info));
+		}
+
+		printf("%s.value %s\n", $key, str_replace(["\r", "\n"], '', $value));
+	}
+}
+unset($graph, $_, $key, $value, $info);
+
+function dovado_stats()
+{
+	global $smsforward;
+	global $curl;
+
+	if(!($curl = curl_init()))
+	{
+		throw new Exception('Could not initialize cURL');
+	}
+
+	$tmpfile = sprintf('%s/%s-%s.txt', sys_get_temp_dir(), md5(__file__), md5(DOVADO_HOST));
+
+	if(!file_exists($tmpfile) && (!touch($tmpfile) || !chmod($tmpfile, 0600)))
+	{
+		throw new Exception('Could not setup cookie jar');
+	}
+
+	foreach([
+		CURLOPT_COOKIEJAR => $tmpfile,
+		CURLOPT_COOKIEFILE => $tmpfile,
+		CURLOPT_RETURNTRANSFER => true,
+	] as $key => $value)
+	{
+		dovado_opt($key, $value);
+	}
+	unset($key, $value);
+
+	// Step 0: Try to reuse old session. (see step 2)
+	dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/getcfg.cgi?wanstatus+/content/wan/wan.html');
+	$result = dovado_exec();
+
+	$_ = curl_getinfo($curl);
+	if($_['http_code'] !== 200)
+	{
+		// Step 1: Login with credentials.
+		dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/login.cgi');
+		dovado_opt(CURLOPT_POSTFIELDS, sprintf('LOGINUNAME=%s&LOGINPASSWD=%s', urlencode(DOVADO_USER), urlencode(base64_encode(DOVADO_PASS))));
+		dovado_redirect('/cgi-bin/getcfg.cgi?home');
+
+		// Step 2: Fetch modem stats and extract relevant data.
+		dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/getcfg.cgi?wanstatus+/content/wan/wan.html');
+		$result = dovado_exec();
+	}
+	unset($_);
+
+	// Fix invalid JSON data...
+	$result = str_replace(', reload:', ', "reload":', $result);
+
+	$matches = null;
+	if(!preg_match('/statusbar_data=(\{.+\})/', $result, $matches) || ($json = json_decode($matches[1], true)) === null)
+	{
+		# TODO: Catch statusbar_data=false?
+		# ...
+
+		throw new Exception();
+	}
+	unset($matches);
+
+	if(($apos = strpos($result, '<div class="usb2" style="display:none"><p>USB1</p></div>')) === false)
+	{
+		throw new Exception();
+	}
+	else if(($bpos = strpos($result, '</td>', $apos)) === false)
+	{
+		throw new Exception();
+	}
+	else
+	{
+		$result = substr($result, $apos, $bpos - $apos);
+	}
+
+	$result = strip_tags($result);
+	$result = explode("\n", $result);
+	$result = array_map('trim', $result);
+
+	if(count($result) !== 9)
+	{
+		throw new Exception();
+	}
+
+	$matches = null;
+	if(preg_match('#^([0-9]+) % (-[0-9]+) dBm \(([2-4]{1})G\)$#', $result[2], $matches))
+	{
+		if($matches[1] < 0 || $matches[1] > 100)
+		{
+			throw new Exception();
+		}
+
+		$result[2] = [(int) $matches[1], (int) $matches[2], (int) $matches[3]];
+	}
+	else
+	{
+		$result[2] = [null, null, null];
+	}
+	unset($matches);
+
+	$return = [
+		'modem'    => $result[5],
+		'firmware' => $result[6],
+		'imei'     => $result[3],
+		'imsi'     => $result[4],
+		'signal'   => $result[2][0],
+		'rssi'     => $result[2][1],
+		'band'     => $result[2][2],
+		'status'   => ($result[1] !== 'CONNECTED'),
+		'newsms'   => isset($json['newSMS']) ? (int) $json['newSMS'] : null,
+		'totsms'   => isset($json['totalSMS']) ? (int) $json['totalSMS'] : null,
+	];
+
+	# usedinterface?
+	# rx_this (rx_metric)
+	# tx_this (tx_metric)
+	# created ["UPTIME"]
+	# ...
+
+	if($smsforward && $return['newsms'])
+	{
+		// Step 3: Fetch (unread) SMS.
+		dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/getcfg.cgi?smsread+/content/sms/smsread.html');
+		$result = dovado_exec();
+
+		$matches = null;
+		if(preg_match_all('#&nbsp;<b>From: [s]?([0-9]+) \(([0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})\)</b><br>(.*?)</p> <hr class="separator">#', $result, $matches))
+		{
+			openlog(strtoupper(basename(__file__)), LOG_PID | LOG_PERROR, LOG_MAIL);
+
+			$c = count($matches[0]);
+			for($i = 0; $i < $c; $i++)
+			{
+				if($i >= $return['newsms'])
+				{
+					break;
+				}
+
+				$header = implode("\r\n",
+				[
+					'MIME-Version: 1.0',
+					'Content-Transfer-Encoding: base64',
+					'Content-Type: text/plain; charset=utf-8',
+					sprintf('Date: %s', date('r', strtotime($matches[2][$i]))),
+					sprintf('From: Dovado Tiny (Munin Plugin) <%s@%s>', posix_getpwuid(posix_geteuid())['name'], gethostname()),
+					sprintf('X-SMS-ID: %u', $c - $i),
+				]);
+
+				$subject = mb_encode_mimeheader(sprintf('New SMS from +%s', $matches[1][$i]), 'UTF-8');
+				$message = chunk_split(base64_encode(trim(html_entity_decode(str_replace('<br>', "\n", $matches[3][$i]), ENT_COMPAT | ENT_HTML401, 'UTF-8'))));
+
+				// Step 4: Forward SMS as mail.
+				if(!mail($smsforward, $subject, $message, $header))
+				{
+					syslog(LOG_ERR, sprintf('Could not forward SMS #%u. (MARKED AS READ NOW!)', $i + 1));
+				}
+			}
+		}
+		unset($matches, $c, $i, $subject, $message, $header);
+	}
+
+	/*
+	try
+	{
+		// Last step: Logout!
+		dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/logout.cgi?FormToken=<TODO>');
+		dovado_redirect('/ui/login');
+
+		curl_close($curl);
+		unset($tmpfile);
+	}
+	catch(Exception $e)
+	{
+		fwrite(STDERR, $e->getTraceAsString());
+	}
+	*/
+
+	return $return;
+}
+
+function dovado_opt($key, $value)
+{
+	global $curl;
+
+	if(!curl_setopt($curl, $key, $value))
+	{
+		throw new Exception(curl_error($curl), curl_errno($curl));
+	}
+}
+
+function dovado_exec()
+{
+	global $curl;
+
+	if(($result = curl_exec($curl)) === false)
+	{
+		throw new Exception(curl_error($curl), curl_errno($curl));
+	}
+
+	return $result;
+}
+
+function dovado_redirect($url)
+{
+	global $curl;
+
+	if(($result = dovado_exec()) !== '')
+	{
+		throw new Exception('Response body is not empty');
+	}
+
+	$_ = curl_getinfo($curl);
+
+	if($_['http_code'] !== 302 || substr($_['redirect_url'], -strlen($url)) !== $url)
+	{
+		throw new Exception('Invalid redirect location in response');
+	}
+}
+
+function dovado_error($severity, $message, $file, $line)
+{
+	if(!(error_reporting() & $severity))
+	{
+		return;
+	}
+
+	throw new ErrorException($message, 0, $severity, $file, $line);
+}
+
+?>
