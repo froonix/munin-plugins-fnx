@@ -451,4 +451,7 @@ function dovado_error($severity, $message, $file, $line)
 	throw new ErrorException($message, 0, $severity, $file, $line);
 }
 
+# TODO: Alternate "simple" mode without logging in?
+# ...
+
 ?>
