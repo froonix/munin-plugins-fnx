@@ -244,6 +244,13 @@ function dovado_stats()
 	}
 	unset($key, $value);
 
+	// Step -1: Force update of JSON data. (WITHOUT THIS STEP SMS COUNTERS ARE OUTDATED!)
+	dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/statusbar.data.cgi?getall');
+	if(!($result = dovado_exec()) || ($json = json_decode($result, true)) === null)
+	{
+		throw new Exception();
+	}
+
 	// Step 0: Try to reuse old session. (see step 2)
 	dovado_opt(CURLOPT_URL, 'http://' . DOVADO_HOST . '/cgi-bin/getcfg.cgi?wanstatus+/content/wan/wan.html');
 	$result = dovado_exec();
@@ -262,6 +269,7 @@ function dovado_stats()
 	}
 	unset($_);
 
+	/*
 	// Fix invalid JSON data...
 	$result = str_replace(', reload:', ', "reload":', $result);
 
@@ -274,6 +282,7 @@ function dovado_stats()
 		throw new Exception();
 	}
 	unset($matches);
+	*/
 
 	if(($apos = strpos($result, '<div class="usb2" style="display:none"><p>USB1</p></div>')) === false)
 	{
