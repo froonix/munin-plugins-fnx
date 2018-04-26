@@ -96,9 +96,13 @@ if($_SERVER['argc'] > 1)
 		{
 			print("graph_title Dovado Tiny (Connection)\n");
 			print("graph_info USB modem statistics\n");
-			print("graph_vlabel RSSI (-) / Misc (+)\n");
 			print("graph_category network\n");
 			print("graph_scale no\n");
+
+			if(!$guestmode)
+			{
+				print("graph_vlabel RSSI (-) / Misc (+)\n");
+			}
 
 			print("status.label Status\n");
 			print("status.info only zero = OK\n");
