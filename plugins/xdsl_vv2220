@@ -57,7 +57,7 @@ else if(substr($basename, -1) !== '_')
 	$basename .= '_';
 }
 
-if(isset($_SERVER['extended']) && $_SERVER['extended'] && !in_array(strtolower($_SERVER['extended']), ['no', 'off', 'false']))
+if(!empty($_SERVER['extended']) && !in_array(strtolower($_SERVER['extended']), ['no', 'off', 'false'], true))
 {
 	$extended = true;
 }
