@@ -10,7 +10,7 @@
 # Alternatively there is an API too, but that is out of scope.         #
 #                                                                      #
 # Note: Currently the "uptime" graph works only with NTP disabled!     #
-#       Otherwise it's impossible to tell the current uptime...        #
+#       Otherwise it's impossible to tell the current uptime. (see #5) #
 #                                                                      #
 # Author:  Christian Schrötter <cs@fnx.li>                             #
 # License: GNU General Public License, version 3                       #
@@ -403,9 +403,6 @@ function dovado_stats()
 
 	$return['uptime'] = isset($json['created']) ? ($json['created'] / 86400) : null;
 	$return['uptime'] = ($return['uptime'] >= 10956) ? ($return['uptime'] - 10956) : null;
-
-	# TODO: How to calculate uptime when date/time is in sync?
-	# ...
 
 	$return['totsms'] = isset($json['totalSMS']) ? (int) $json['totalSMS'] : null;
 	$return['newsms'] = isset($json['newSMS']) ? (int) $json['newSMS'] : null;
