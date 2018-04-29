@@ -1,11 +1,11 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
-Copyright: 2017 Christian Schrötter
+Copyright: 2018 Christian Schrötter
 License: GPL-3.0+
 
 Files: plugins/load
-Copyright: 2017 Christian Schrötter
+Copyright: 2018 Christian Schrötter
 License: GPL-2.0
 
 License: GPL-2.0
