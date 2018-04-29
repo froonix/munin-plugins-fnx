@@ -9,6 +9,9 @@
 # See "env.smsforward" config variable to enable this feature.         #
 # Alternatively there is an API too, but that is out of scope.         #
 #                                                                      #
+# Note: Currently the "uptime" graph works only with NTP disabled!     #
+#       Otherwise it's impossible to tell the current uptime...        #
+#                                                                      #
 # Author:  Christian Schrötter <cs@fnx.li>                             #
 # License: GNU General Public License, version 3                       #
 #                                                                      #
@@ -150,6 +153,18 @@ if($_SERVER['argc'] > 1)
 			}
 		}
 
+		print("multigraph ${basename}uptime\n");
+		{
+			print("graph_title Dovado Tiny (Uptime)\n");
+			print("graph_vlabel uptime in days\n");
+			print("graph_args --base 1000 -l 0\n");
+			print("graph_category system\n");
+			print("graph_scale no\n");
+
+			print("uptime.label Uptime\n");
+			print("uptime.draw AREA\n");
+		}
+
 		exit(0);
 	}
 }
@@ -216,6 +231,11 @@ if($result['newsms'] !== null || $result['totsms'] !== null)
 	{
 		$output['sms']['unread'] = $result['newsms'];
 	}
+}
+
+if($result['uptime'] !== null)
+{
+	$output['uptime']['uptime'] = $result['uptime'];
 }
 
 foreach($output as $graph => $_)
@@ -381,13 +401,18 @@ function dovado_stats()
 		];
 	}
 
+	$return['uptime'] = isset($json['created']) ? ($json['created'] / 86400) : null;
+	$return['uptime'] = ($return['uptime'] >= 10956) ? ($return['uptime'] - 10956) : null;
+
+	# TODO: How to calculate uptime when date/time is in sync?
+	# ...
+
 	$return['totsms'] = isset($json['totalSMS']) ? (int) $json['totalSMS'] : null;
 	$return['newsms'] = isset($json['newSMS']) ? (int) $json['newSMS'] : null;
 
 	# usedinterface?
 	# rx_this (rx_metric)
 	# tx_this (tx_metric)
-	# created ["UPTIME"]
 	# ...
 
 	if($smsforward && $return['newsms'])
