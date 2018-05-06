@@ -1,9 +1,9 @@
-munin-plugins-fnx (0.0.3-1) UNRELEASED; urgency=medium
+munin-plugins-fnx (0.0.3-1) experimental; urgency=medium
 
   * Removed redundant copyright statement.
   * New plugin: dovado_tiny
 
- -- Christian Schrötter <cs@fnx.li>  Sun, 29 Apr 2018 16:48:00 +0200
+ -- Christian Schrötter <cs@fnx.li>  Sun, 06 May 2018 23:39:01 +0200
 
 munin-plugins-fnx (0.0.2-2) experimental; urgency=medium
 
