@@ -90,7 +90,7 @@ if($_SERVER['argc'] > 1)
 			print("status.label Status\n");
 			print("status.info only zero = OK\n");
 			print("status.colour COLOUR16\n");
-			print("status.draw LINE0\n");
+			print("status.draw LINE0.001\n");
 
 			print("max_down.graph no\n");
 			print("max_down.label ...\n");

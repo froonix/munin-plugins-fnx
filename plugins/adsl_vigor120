@@ -101,7 +101,7 @@ then
 	echo "status.label Status"
 	echo "status.info only zero = OK"
 	echo "status.colour COLOUR16"
-	echo "status.draw LINE0"
+	echo "status.draw LINE0.001"
 
 	echo "max_down.graph no"
 	echo "max_down.label ..."
