@@ -1,3 +1,9 @@
+munin-plugins-fnx (0.0.5-1) experimental; urgency=medium
+
+  * Fix uptime calculation at DOVADO_TINY plugin.
+
+ -- Christian Schrötter <cs@fnx.li>  Sun, 24 May 2018 12:52:00 +0200
+
 munin-plugins-fnx (0.0.4-1) experimental; urgency=medium
 
   * Stretch: Fix LINE0 bug at rrdtool v1.6 (see Debian BTS #891491)

@@ -402,7 +402,7 @@ function dovado_stats()
 	}
 
 	$return['uptime'] = isset($json['created']) ? ($json['created'] / 86400) : null;
-	$return['uptime'] = ($return['uptime'] >= 10956) ? ($return['uptime'] - 10956) : null;
+	$return['uptime'] = ($return['uptime'] >= 10957) ? ($return['uptime'] - 10957) : null;
 
 	$return['totsms'] = isset($json['totalSMS']) ? (int) $json['totalSMS'] : null;
 	$return['newsms'] = isset($json['newSMS']) ? (int) $json['newSMS'] : null;
