@@ -45,6 +45,8 @@
 set -euf -o pipefail
 LANG=C # <- printf %f
 
+statusmore="LatencyPath LoS LoF LPR RFI Ncd Lcd FECS ES LOSS UAS HECError CRC RsCorrection INP InterleaveDelay"
+
 trim()
 {
 	local var="$*"
@@ -53,19 +55,24 @@ trim()
 	echo -n "$var"
 }
 
+get_line()
+{
+	trim "$(grep -F " $1 " <<< "$result"  | tr -s ' ' | cut -d ':' -f 2)" | cut -d ' ' -f "$2"
+}
+
 get_field()
 {
-	trim "$(grep "$1" <<< "$result" | tr -s ' ' | cut -d ':' -f "$2")"
+	trim "$(grep -F " $1 " <<< "$result" | tr -s ' ' | cut -d ':' -f "$2")"
 }
 
 floatval()
 {
-	printf "%.1f" "$(tr -d ' ' <<< "$1" | sed -r 's/^([0-9]+)\.([0-9]+).+$/\1.\2/')"
+	printf "%.1f" "$(tr -d ' ' <<< "$1" | sed -r 's/^([0-9]+)\.([0-9]+).*?$/\1.\2/')"
 }
 
 intval()
 {
-	printf "%d" "$(tr -d ' ' <<< "$1" | sed -r 's/^([0-9]+).+$/\1/')"
+	printf "%d" "$(tr -d ' ' <<< "$1" | sed -r 's/^([0-9]+).*?$/\1/')"
 }
 
 mode="${1:-}"
@@ -162,6 +169,37 @@ then
 	echo "snr_up.negative snr_down"
 	echo "snr_up.min 0"
 
+	echo "multigraph ${basename}stats_vigor"
+
+	echo "graph_title ADSL line stats (extended)"
+	echo "graph_vlabel near (-) / far (+)"
+	echo "graph_category network"
+	echo "graph_scale no"
+
+	for item in $statusmore
+	do
+		near="$(echo "${item,,}")_near";
+		far="$(echo "${item,,}")_far";
+
+		echo "$near.graph no"
+		echo "$near.label ..."
+		echo "$near.min 0"
+
+		echo "$far.label $item"
+		echo "$far.negative $near"
+		echo "$far.min 0"
+	done
+
+	echo "multigraph ${basename}uptime"
+
+	echo "graph_title ADSL modem uptime"
+	echo "graph_args --base 1000 -l 0"
+	echo "graph_scale no"
+	echo "graph_vlabel days"
+	echo "graph_category system"
+	echo "uptime.label uptime"
+	echo "uptime.draw AREA"
+
 	exit
 fi
 
@@ -177,10 +215,16 @@ send "$password\n"
 
 expect {
 	"Password:" { puts stderr "Error: Wrong password!"; close; exit }
-	">" { send "adsl status\n" }
+	"> " { send "adsl status\n" }
 }
 
-expect ">"
+expect "> "
+send "adsl status more\n"
+
+expect "> "
+send "show status\n"
+
+expect "> "
 send "quit\n"
 
 close
@@ -254,4 +298,27 @@ then
 	if [[ "$snr_up" != "0" ]]
 	then echo "snr_up.value $snr_up"
 	fi
+fi
+
+if [[ "$result" =~ 'Near End' && "$result" =~ 'Far End' ]]
+then
+	echo "multigraph ${basename}stats_vigor"
+
+	for item in $statusmore
+	do
+		echo "$(echo "${item,,}")_near.value $(intval "$(get_line "$item" 1)")"
+		echo "$(echo "${item,,}")_far.value $(intval "$(get_line "$item" 2)")"
+	done
+fi
+
+if [[ "$result" =~ 'System Uptime' ]]
+then
+	echo "multigraph ${basename}uptime"
+
+	uptime=`grep -F "System Uptime" <<< "$result"`
+	h=`cut -d ':' -f 2 <<< "$uptime"`
+	m=`cut -d ':' -f 3 <<< "$uptime"`
+	s=`cut -d ':' -f 4 <<< "$uptime"`
+
+	echo "uptime.value $(printf "%f" "$(bc -l <<< "(($h * 3600) + ($m * 60) + $s) / 86400")")"
 fi
