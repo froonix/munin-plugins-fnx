@@ -200,6 +200,56 @@ then
 	echo "uptime.label uptime"
 	echo "uptime.draw AREA"
 
+	echo "multigraph ${basename}blocks"
+
+	echo "graph_title ADSL blocks"
+	echo "graph_args --base 1000"
+	echo "graph_vlabel RX (-) / TX (+) per \${graph_period}"
+	echo "graph_category network"
+
+	echo "rx.label ..."
+	echo "rx.type DERIVE"
+	echo "rx.graph no"
+	echo "rx.min 0"
+
+	echo "tx.label Blocks"
+	echo "tx.type DERIVE"
+	echo "tx.negative rx"
+	echo "tx.min 0"
+	echo "tx.colour COLOUR0"
+	echo "tx.draw AREA"
+
+	echo "uncorrected.label ..."
+	echo "uncorrected.type DERIVE"
+	echo "uncorrected.graph no"
+	echo "uncorrected.min 0"
+
+	echo "corrected.label (Un)corrected"
+	echo "corrected.type DERIVE"
+	echo "corrected.negative uncorrected"
+	echo "corrected.min 0"
+	echo "corrected.colour COLOUR15"
+	echo "corrected.draw LINE3"
+
+	echo "multigraph ${basename}lan"
+
+	echo "graph_title LAN packets"
+	echo "graph_args --base 1000"
+	echo "graph_vlabel RX (-) / TX (+) per \${graph_period}"
+	echo "graph_category network"
+
+	echo "rx.label ..."
+	echo "rx.type DERIVE"
+	echo "rx.graph no"
+	echo "rx.min 0"
+
+	echo "tx.label Packets"
+	echo "tx.type DERIVE"
+	echo "tx.negative rx"
+	echo "tx.min 0"
+	echo "tx.colour COLOUR1"
+	echo "tx.draw AREA"
+
 	exit
 fi
 
@@ -321,4 +371,31 @@ then
 	s=`cut -d ':' -f 4 <<< "$uptime"`
 
 	echo "uptime.value $(printf "%f" "$(bc -l <<< "(($h * 3600) + ($m * 60) + $s) / 86400")")"
+fi
+
+if [[ "$result" =~ ' Block:' ]]
+then
+	echo "multigraph ${basename}blocks"
+
+	echo "rx.value $(egrep -o 'RX Block:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+	echo "tx.value $(egrep -o 'TX Block:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+
+	echo "uncorrected.value $(egrep -o 'Uncorrected Blocks:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+	echo "corrected.value $(egrep -o 'Corrected Blocks:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+fi
+
+if [[ "$result" =~ ' Rate:' ]]
+then
+	echo "multigraph ${basename}lan"
+
+	echo "rx.value $(egrep -o 'Rx Rate:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+	echo "tx.value $(egrep -o 'Tx Rate:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+
+	dns1=`egrep -o 'Primary DNS:[^ ]+' <<< "$result" | cut -d ':' -f 2`
+	dns2=`egrep -o 'Secondary DNS:[^ ]+' <<< "$result" | cut -d ':' -f 2`
+
+	if [[ "$dns1" != "" || "$dns2" != "" ]]
+	then
+		echo "tx.extinfo Primary DNS: $dns1; Secondary DNS: $dns2"
+	fi
 fi
