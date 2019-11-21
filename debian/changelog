@@ -1,3 +1,9 @@
+munin-plugins-fnx (0.0.6-1) experimental; urgency=medium
+
+  * Updated plugin: adsl_vigor120 (new graphs)
+
+ -- Christian Schrötter <cs@fnx.li>  Thu, 21 Nov 2019 02:48:00 +0100
+
 munin-plugins-fnx (0.0.5-1) experimental; urgency=medium
 
   * Fix uptime calculation at DOVADO_TINY plugin.
