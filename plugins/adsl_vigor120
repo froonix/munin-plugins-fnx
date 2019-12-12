@@ -182,10 +182,12 @@ then
 		far="$(echo "${item,,}")_far";
 
 		echo "$near.graph no"
+		echo "$near.type DERIVE"
 		echo "$near.label ..."
 		echo "$near.min 0"
 
 		echo "$far.label $item"
+		echo "$far.type DERIVE"
 		echo "$far.negative $near"
 		echo "$far.min 0"
 	done
