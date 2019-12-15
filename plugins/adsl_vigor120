@@ -379,8 +379,8 @@ if [[ "$result" =~ ' Block:' ]]
 then
 	echo "multigraph ${basename}blocks"
 
-	echo "rx.value $(egrep -o 'RX Block:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
-	echo "tx.value $(egrep -o 'TX Block:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
+	echo "rx.value $(egrep -o 'RX Block:[0-9-]+' <<< "$result" | cut -d ':' -f 2)"
+	echo "tx.value $(egrep -o 'TX Block:[0-9-]+' <<< "$result" | cut -d ':' -f 2)"
 
 	echo "uncorrected.value $(egrep -o 'Uncorrected Blocks:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
 	echo "corrected.value $(egrep -o 'Corrected Blocks:[0-9]+' <<< "$result" | cut -d ':' -f 2)"
